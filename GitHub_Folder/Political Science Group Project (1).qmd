@@ -1,0 +1,282 @@
+---
+title: "Application Area Project"
+format: html
+editor: visual
+---
+
+## Introduction
+
+    Throughout the Twentieth Century, the primary distinction between America's two major political parties has been differences in their understanding of the role of government, particularly the federal government. The Republican Party has espoused a circumscribed view of government, wherein it is restricted to an explicitly numerated scope. The Democratic Party meanwhile has espoused an expansive view of government, wherein its authority for operating in a given sphere, and at a certain depth, is granted by the people or their representatives through legislation. This is a difference along the Libertarian/Authoritarian axis of the Nolan Chart, a tool in political science for visualizing political beliefs. However, since the conclusion of World War II, the Democratic Party, while retaining its expansive view of government, under the influence of Marxist and Post-Modern understandings of the relationshp between the individual and the society, has also shifted to its now-defining liberal social position. This is a shift along the perpendicular Liberal/Conservative axis of the Nolan Chart.
+
+    Similar changes in the Republican Party were not forthcoming. The party's general position on this diagram was similar from the WWII generation through to the end of the Twentieth Century. However, the rise of Donald Trump seems to have been a turning point. With his election to the presidency (and to de facto leader of the Republican Party), European-style authoritarian right-wing populism has been injected into the politics of the American Right. While there is still Republican in-fighting about where the party should now sit on the Libertarian/Authoritarian axis, it may now be the case that the primary distinction between America's two political parties is along the Liberal/Conservative axis.
+
+    In this project, we will explore whether the Democratic Party and the Republican Party have converged along the Libertarian/Authoritarian axis, particularly at the Authoritarian pole. We will be using the American Trends Panel Wave 87 dataset from the Pew Research Center. This survey, conducted in March of 2021, polls a  sample of Americans regarding a variety of political opinions. Most importantly, demographic information is presented including party allegiance. Pew generates a weight for each participant based on demographic information; this allows for representative summaries from a not-necessarily-representative sample. By coding questions as affiliated with a pole of the Libertarian/Authoritarian axis, we should be able to compare the affiliates of the two parties.
+
+    Below is the so-called Nolan Chart. This depicts the two established axes of political positions.
+
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Nolan_chart_normal.svg/1200px-Nolan_chart_normal.svg.png)
+
+## Cleaning
+
+    The Pew Research Center has done a commendable job in providing clean data for public use. Thankfully, that means there is relatively little cleaning needed from our team. However, we must wrangle the party affiliation data into a usable format. In the survey, participants are asked outright for their party affiliation. Responses include Democrat, Republican, Independent, and "Something else". Participants also had the choice of refusing to answer.
+
+    The following is a histogram of first-order party affiliation.
+
+```{r, echo = FALSE}
+library(tidyverse)
+library(haven)
+
+dat <- 
+    read_spss("C:/Users/jeetp/Desktop/Project/02.Politics/ATP W87.sav") %>%
+    mutate(across(where(function(x) {
+        class(x)[1] == "haven_labelled"
+    }), .fns = function(y) {
+        as_factor(y, levels = "labels", ordered = TRUE)
+    }))
+```
+
+```{r}
+write.csv(dat, "C:/Users/jeetp/Desktop/Project/02.Politics/Politics_Dataset.csv")
+```
+
+```{r, warning = FALSE}
+dat %>%
+    ggplot(aes(F_PARTY_FINAL)) +
+    geom_histogram(stat = "count") +
+    xlab("Party Affiliation") +
+    ggtitle("Republicans are underrepresented")
+```
+
+    As we can see, there are about half as many declared Republicans in the data as there are declared Democrats. Therefore, if we are to run into issues with sample sizes, it will likely come from the Republican cohort. However, we do know that, in recent years, Republicans have become more likely to hide their true beliefs and affiliations from pollsters: this was part of the reason the 2016 presidential election predictions were wrong. So there may be Republicans hiding in the Independent and "Something else" categories.
+
+    For those participants that declared Independent or "Something else" for their first-order party affiliation, the survey then asks which party they tend to lean towards.
+
+    The following is a histogram of second-order party affiliation.
+
+```{r, warning = FALSE}
+dat %>%
+    filter(F_PARTY_FINAL %in% c("Independent", "Something else")) %>%
+    ggplot(aes(F_PARTYLN_FINAL)) +
+    geom_histogram(stat = "count") +
+    xlab("Party Leaning") +
+    ggtitle("Independents that lean Republican are also underrepresented")
+```
+
+    As we can see, declared-non-Republicans who lean Republican are also underrepresented as compared with declared-non-Democrats who lean Democratic.
+
+    To generate a single "party" variable, we combine the first- and second-order party affiliations. Participants who declare Democrat or Republican in the first-order question will receive a designation of "DEM" or "REP" respectively. For those who proceded to the second-order question, they will receive a designation of "L DEM" and "L REP" for "lean Democratic" and "lean Republican" respectively. Those who refused to answer both questions will retain their designation of "Refused".
+
+```{r}
+dat <- 
+    dat %>%
+    filter(F_PARTYLN_FINAL != "Refused" | is.na(F_PARTYLN_FINAL)) %>%
+    mutate(party = if_else(F_PARTY_FINAL == "Republican", "REP",
+                           if_else(F_PARTY_FINAL == "Democrat", "DEM",
+                                   if_else(F_PARTYLN_FINAL == "The Republican Party", "L REP", "L DEM"))),
+           party = factor(party, levels = c("DEM", "L DEM", "L REP", "REP")))
+
+dat %>%
+    count(party)
+```
+
+## Analysis
+
+    In this section, we will be looking at a few variables that may provide information on the Libertarian/Authoritarian makeup of the Republican and Democratic parties.
+
+    Obviously, political scientists do not recommend simply asking respondents how authoritarian their political views are. The emotional connotations associated with terms "authoritarian" and "libertarian" are such that the results would be misleading. Additionally, most citizens do not understand the definitions of the terms enough (nor how they meaingfully relate to their own views) to make such an evaluation. Therefore, a broad gamut of policy preference questions are presented to respondents and political scientists piece together the answers to form a picture. That is what we will be doing here.
+
+    Although humans are complex and bring an entourage of, among other things, experiences, arguments, and ideologies to bear when answering each and every question, some questions will be more illuminating than others for our interest in the Libertarian/Authoritarian axis. Here, we will present breakdowns of the few variables that are most relevant. Those than had potential but were likely influenced by confounding factors and those that revealed interesting but off-topic information will be presented in the appendix.
+
+### Budget Deficit
+
+    The first question that seems relevant is this: "How much of a problem do you think {the federal budget deficit is} in the country today?". Notable Libertarians such as Senator Rand Paul of Kentucky are among the fiercest deficit hawks on the public stage. They believe that running a budget deficit is an obvious symptom of a government that has exceeded its mandate, especially when the budgetary figures themselves are extremely large. Therefore, we would expect relatively authoritarian actors to be relatively less concerned about an existing budget deficit than relatively libertarian actors. As such we should 1) expect Democrats to care relatively less about the budget deficit, and 2) if the Republican Party has become more authoritarian, we should expect Republicans to care relatively less about the budget deficit than they would otherwise.
+
+    Below is a faceted bar chart showing the proportions of each response for each party category.
+
+```{r}
+dat %>%
+    group_by(party) %>%
+    count(NATPROBS_c_W87) %>%
+    nest() %>%
+    mutate(data = map(data, function(x) {
+        x %>%
+            mutate(prop = n / sum(x$n))
+    })) %>%
+    unnest(cols = c(data)) %>%
+    ggplot(aes(NATPROBS_c_W87, prop, fill = factor(party))) +
+    geom_col() +
+    facet_grid(~party) +
+    theme(axis.text.x = element_text(angle = 90)) +
+    ylab("Proportion of Responses") +
+    xlab(NULL) +
+    ggtitle("How much of a problem is the budget deficit?*") +
+    labs(caption = "*\"How much of a problem do you think {the federal budget deficit is} in the country today?\"") +
+    scale_fill_discrete(type = c("#0000FF", "#99CCFF","#F8766D","#990000")) +
+    theme(legend.position = "none")
+```
+
+    Surprisingly, given the general completeness of the Pew data, nearly 50% of the responses are missing for each party category. Because we do not know what correlates with the missingness of the data, we must take these results with a grain of salt. However, two things stand out. First, a near-majority or more of every category reports considering the federal budget deficit at least a "moderately big problem". In my opinion, this is likely attributable to the connotations associated with the term "deficit": everyone knows that, when it comes to financial matters, a deficit is bad; therefore, it may seem rather reckless to consider a deficit "not a problem at all". Second, in both Republican cohorts, the "very big problem" group accounts for nearly twice as many respondents as does the "moderately big problem" group, and together they account for nearly all of the non-missing observations. This indicates that there remains a fiscally conservative majority within the Republican Party. Because fiscal prudence is more associated with Libertarianism than Authoritarianism, this is evidence that the Republican Party has not matched the Democratic Party along the Libertarian/Authoritarianism axis.
+
+### Government Role
+
+    To our surprise, Pew included a question in this survey that is perfectly relevant to our interest in this report: 
+
+    Which statement comes closer to your own views, even if neither is exactly right?
+        1. Government should do more to solve problems
+        2. Government is doing too many things better left to businesses and individuals
+        
+    The first option clearly demonstrates a preference for the now-standard Democratic view of an expansive federal government. The second option clearly demonstrates the Libertarian view of a circumscribed state. If the second option is still dominant within Republican circles, this would be direct evidence that the Republican Party has not made a radical Authoritarian shift in the time since 2016.
+
+    Below is a faceted bar chart showing the proportions of each response for each party category.
+
+```{r}
+dat %>%
+    mutate(role = if_else(str_detect(GOVT_ROLE_W87, "more"), "More",
+                          if_else(str_detect(GOVT_ROLE_W87, "too"), "Less", "Refused")),
+           role = factor(role)) %>%
+    group_by(party) %>%
+    count(role) %>%
+    nest() %>%
+    mutate(data = map(data, function(x) {
+        x %>%
+            mutate(prop = n / sum(x$n))
+    })) %>%
+    unnest(cols = c(data)) %>%
+    ggplot(aes(role, prop, fill = factor(party))) +
+    geom_col() +
+    facet_grid(~party) +
+    theme(axis.text.x = element_text(angle = 45)) +
+    ylab("Proportion of Responses") +
+    xlab(NULL) +
+    ggtitle("Should the government be more involved or less involved?*") +
+    labs(caption = "*\"Government should do more to solve problems.\" or \"Government is doing too many things better left to businesses and individuals.\"\n\"More\" = \"Government should do more to solve problems\"\n\"Less\" = \"Government is doing too many things better left to businesses and individuals\"") +
+    scale_fill_discrete(type = c("#0000FF", "#99CCFF","#F8766D","#990000")) +
+    theme(legend.position = "none")
+```
+
+    Again, two things stand out. First, and most importantly, the two parties seem to remain diametrically opposed on the views that define the Libertarian/Authoritarian axis. The vast majority of Democrats want the government to do more, and the vast majority of Republicans want the government to do less. Second, the two "vast majorities" are of different magnitudes: the proportion of Democrats who want more government action is noticeably greater than the proportion of Republicans who want less government action.
+    (This demonstrates an interesting point that is further elaborated upon in the appendix: Democrats seem to be more ideologically homogenous than are Republicans, or, worded differently, the Republican Party is more of a "big tent party" than is the Democratic Party.)
+    These data, therefore, provide evidence that the Republican Party remains dominated by the Libertarian view of government. However, this argument may need to be qualified because the magnitude of the Republican's position on the Libertarian side of the axis is not as large as that of the Democrat's position on the Authoritarian side. To understand if this is the steady-state position of the Republican Party or if this indicates an ongoing shift from a previous more Libertarian position, we would need time-series data which are not available from the Pew Research Center.
+
+## Model (I'm not sure if what I've done so far qualifies for the analysis/model requirement from the rubric on Canvas)
+
+## Conclusion
+
+## Appendix
+
+    During our exploratory analysis we considered the breakdowns of many different survey questions. Most either were not relevant to our topic or have likely confounding effects that made parsing Libertarian/Authoritarian differences impossible. However, most of these breakdowns revealed an interesting feature: Republicans seem to be more diverse in their political opinions than are Democrats. Often, for any given question, Democratic cohorts show vast preference for one option whereas Republican cohorts, though still sometimes having a clear majority, are much less homogenous.
+
+    The following survey questions demonstrate this insight:
+
+```{r}
+dat %>%
+    group_by(party) %>%
+    count(COVIDAIDAPPR_W87) %>%
+    nest() %>%
+    mutate(data = map(data, function(x) {
+        x %>%
+            mutate(prop = n / sum(x$n))
+    })) %>%
+    unnest(cols = c(data)) %>%
+    ggplot(aes(COVIDAIDAPPR_W87, prop, fill = factor(party))) +
+    geom_col() +
+    facet_grid(~party) +
+    theme(axis.text.x = element_text(angle = 90)) +
+    ylab("Proportion of Responses") +
+    xlab(NULL) +
+    ggtitle("Do you approve of the COVID aid package?*") +
+    labs(caption = "*\"Do you approve or disapprove of the coronavirus economic aid package passed by Joe Biden and Congress last month?\"") +
+    scale_fill_discrete(type = c("#0000FF", "#99CCFF","#F8766D","#990000")) +
+    theme(legend.position = "none")
+
+
+dat %>%
+    mutate(gun = if_else(str_detect(GUNSTRICT_W87, "MORE"), "More",
+                          if_else(str_detect(GUNSTRICT_W87, "LESS"), "Less", "Refused")),
+           gun = factor(gun)) %>%
+    group_by(party) %>%
+    count(gun) %>%
+    nest() %>%
+    mutate(data = map(data, function(x) {
+        x %>%
+            mutate(prop = n / sum(x$n))
+    })) %>%
+    unnest(cols = c(data)) %>%
+    ggplot(aes(gun, prop, fill = factor(party))) +
+    geom_col() +
+    facet_grid(~party) +
+    theme(axis.text.x = element_text(angle = 45)) +
+    ylab("Proportion of Responses") +
+    xlab(NULL) +
+    ggtitle("How strict should gun laws be?*") +
+    labs(caption = "*\"Which of the following statements comes closest to your overall view of gun laws in this country?\"\n\"More\" = \"Gun laws should be MORE strict than they are today\"\n\"Less\" = \"Gun laws should be LESS strict than they are today\"") +
+    scale_fill_discrete(type = c("#0000FF", "#99CCFF","#F8766D","#990000")) +
+    theme(legend.position = "none")
+
+dat %>%
+    group_by(party) %>%
+    count(MINWAGE_W87) %>%
+    nest() %>%
+    mutate(data = map(data, function(x) {
+        x %>%
+            mutate(prop = n / sum(x$n))
+    })) %>%
+    unnest(cols = c(data)) %>%
+    ggplot(aes(MINWAGE_W87, prop, fill = factor(party))) +
+    geom_col() +
+    facet_grid(~party) +
+    theme(axis.text.x = element_text(angle = 90)) +
+    ylab("Proportion of Responses") +
+    xlab(NULL) +
+    ggtitle("Should the minimum wage be raised to $15?*") +
+    labs(caption = "*\"Do you favor or oppose raising the federal minimum wage to $15.00 an hour?\"") +
+    scale_fill_discrete(type = c("#0000FF", "#99CCFF","#F8766D","#990000")) +
+    theme(legend.position = "none")
+```
+
+    For all three of these survey questions, Democrats demonstrated relative viewpoint conformity whereas Republicans demonstrated relative viewpoint diversity. Of further note is that the wording of the question from the first plot (COVID aid package) explicitly attributes the aid to President Joe Biden, a Democrat. Even though Republicans had just lost a contentious election (these data were collected in March 2021), many still indicated that they approved of legislation passed by their victorious opponenet.
+
+    For further evidence, consider the next two survey questions. The first asks respondents to rate the Trump administration's handling of COVID vaccines while the second asks respondents to rate the Biden administration's handling of COVID vaccines. Note the dramatic swing between questions by Democrats and the more modest swing between questions by Republicans.
+
+```{r}
+dat %>%
+    group_by(party) %>%
+    count(VACC_T_DIST_W87) %>%
+    nest() %>%
+    mutate(data = map(data, function(x) {
+        x %>%
+            mutate(prop = n / sum(x$n))
+    })) %>%
+    unnest(cols = c(data)) %>%
+    ggplot(aes(VACC_T_DIST_W87, prop, fill = factor(party))) +
+    geom_col() +
+    facet_grid(~party) +
+    theme(axis.text.x = element_text(angle = 45)) +
+    ylab("Proportion of Responses") +
+    xlab(NULL) +
+    ggtitle("How did President Trump do handling vaccines?*") +
+    labs(caption = "*\"How would you rate the job the Trump administration is doing managing the manufacture and distribution of the vaccines to Americans?\"") +
+    scale_fill_discrete(type = c("#0000FF", "#99CCFF","#F8766D","#990000")) +
+    theme(legend.position = "none")
+
+
+dat %>%
+    group_by(party) %>%
+    count(VACC_B_DIST_W87) %>%
+    nest() %>%
+    mutate(data = map(data, function(x) {
+        x %>%
+            mutate(prop = n / sum(x$n))
+    })) %>%
+    unnest(cols = c(data)) %>%
+    ggplot(aes(VACC_B_DIST_W87, prop, fill = factor(party))) +
+    geom_col() +
+    facet_grid(~party) +
+    theme(axis.text.x = element_text(angle = 45)) +
+    ylab("Proportion of Responses") +
+    xlab(NULL) +
+    ggtitle("How is President Biden doing handling vaccines?*") +
+    labs(caption = "*\"How would you rate the job the Biden administration is doing managing the manufacture and distribution of the vaccines to Americans?\"") +
+    scale_fill_discrete(type = c("#0000FF", "#99CCFF","#F8766D","#990000")) +
+    theme(legend.position = "none")
+```
