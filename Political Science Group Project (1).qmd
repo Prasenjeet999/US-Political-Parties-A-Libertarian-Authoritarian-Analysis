@@ -33,7 +33,7 @@ library(tidyverse)
 library(haven)
 
 dat <- 
-    read_spss("C:/Users/jeetp/Desktop/Project/02.Politics/ATP W87.sav") %>%
+    read_spss("https://github.com/Prasenjeet999/Data_Science_as_Field_Project/raw/main/ATP%20W87.sav") %>%
     mutate(across(where(function(x) {
         class(x)[1] == "haven_labelled"
     }), .fns = function(y) {
