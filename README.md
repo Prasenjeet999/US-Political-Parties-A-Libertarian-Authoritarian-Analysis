@@ -12,7 +12,7 @@ Michael Alexander Grodecki
 ## Introduction
 The distinction between the Democratic and Republican parties in the United States has historically centered around their views on the role of government. This project delves into these ideological differences, examining shifts towards or away from libertarian and authoritarian positions, influenced by various political, social, and economic factors.
 
-![Nolan Chart](/asset/Nolan_chart_normal.png)
+![Nolan Chart](/assets/Nolan_chart_normal.png)
 
 ## Data Source
 The analysis is based on the American Trends Panel Wave 87 dataset from **Pew Research Center**, conducted in March 2021. This dataset provides a rich source of demographic and political opinion data from a sample of Americans, weighted to represent the broader population accurately.
