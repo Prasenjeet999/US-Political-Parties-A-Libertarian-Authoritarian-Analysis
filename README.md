@@ -25,6 +25,8 @@ The analysis is based on the American Trends Panel Wave 87 dataset from **Pew Re
 ## Results
 Our findings suggest a continued ideological divide between the Democratic and Republican parties along the Libertarian-Authoritarian axis, particularly regarding government's role and fiscal policies. Despite some convergence in specific areas, the parties remain distinct in their core philosophies.
 
+![Budget Deficit Opinion](/assets/assets/Budget_Deficit.png)
+
 ## Installation
 This project is structured as an R Markdown document. To run the analysis, ensure you have R and RStudio installed, then follow these steps:
 
